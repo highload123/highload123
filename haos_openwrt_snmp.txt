@@ -1,0 +1,103 @@
+Сбор трафика (и не только) по snmp.
+Просто "для памяти" :)
+
+Подразумевается, что snmpd на openwrt уже стоит.
+
+На момент написания:
+Home Assistant OS 13.1, supervisor-2024.09.1, core-2024.9.3
+OpenWrt 23.05.3б, snmpd	5.9.1-7
+
+Рассмотрим на примере учёта входящего и исходящего трафика. Для точности, весь учёт ведётся в байтах, но добавить value / 1048576, я думаю, при желании, каждый сможет.
+
+1) Создаём сенсоры/переменные в соответствующих местах:
+
+Сенсоры для опроса роутера.
+
+sensor:
+  - platform: snmp
+    host: 192.168.1.1
+    version: 2c
+    baseoid: 1.3.6.1.2.1.31.1.1.1.6.11
+    name: snmp_wan_in
+    unique_id: snmp_wan_in
+# опрашиваем раз в 15 минут
+    scan_interval: 900
+
+  - platform: snmp
+    host: 192.168.1.1
+    version: 2c
+    baseoid: 1.3.6.1.2.1.31.1.1.1.10.11
+    name: snmp_wan_out
+    unique_id: snmp_wan_out
+# опрашиваем раз в 15 минут
+    scan_interval: 900
+
+В этих input_number'ах хранятся дельты трафика с последнего запроса.
+Дельты получаем посредством автоматизаций, запускаемых системой по изменению сенсоров snmp_wan_in и snmp_wan_out
+
+input_number:
+  wan_traffic_in:
+    name: 'WAN Download'
+    min: '0'
+    max: '9000000000'
+    unit_of_measurement: 'b' 
+    icon: 'mdi:download'
+
+  wan_traffic_out:
+    name: 'WAN Upload'
+    min: '0'
+    max: '9000000000'
+    unit_of_measurement: 'b'
+    icon: 'mdi:upload'
+
+2) Создаём две автоматизации, вычисляющие дельту от предыдущего запроса.
+
+alias: InternetIn
+description: InternetIn
+trigger:
+  - platform: state
+    entity_id:
+      - sensor.snmp_wan_in
+condition: []
+action:
+  - action: input_number.set_value
+    metadata: {}
+    data:
+      value: "{{ (trigger.to_state.state | int - trigger.from_state.state | int) }}"
+    target:
+      entity_id: input_number.wan_traffic_in
+mode: single
+
+alias: InternetOut
+description: InternetOut
+trigger:
+  - platform: state
+    entity_id:
+      - sensor.snmp_wan_out
+condition: []
+action:
+  - action: input_number.set_value
+    metadata: {}
+    data:
+      value: "{{ (trigger.to_state.state | int - trigger.from_state.state | int) }}"
+    target:
+      entity_id: input_number.wan_traffic_out
+mode: single
+
+3) Создаём два Utility Meter'а, которые содержат трафик за текущий месяц.
+
+utility_meter:
+  energy:
+    source: sensor.wan_traffic_in
+    name: internet_monthly_in
+    always_available:true
+    cycle: monthly
+
+  energy:
+    source: sensor.wan_traffic_out
+    name: internet_monthly_out
+    always_available:true
+    cycle: monthly
+
+P.S.
+Можно было сделать и попроще - Utility Meter привязать сразу к сенсорам snmp, но так проще "вычислить" среднюю скорость за период времени.
