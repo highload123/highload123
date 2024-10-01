@@ -1,0 +1,107 @@
+При использовании в помещении датчика движения для включения света и наличия "физического" выключателя, может появиться необходимость, что бы выключатель был приоритетней датчика движения - т.е. свет, включенный физическим выключателем не выключался, когда датчик движения перестаёт обнаруживать это самое движение.
+
+Исходные данные:
+
+1) Есть страница настроек, на которой есть сенсор, который определяет - включать/выключать в данном помещении свет при наличии/отсутствии движения или нет.
+
+input_boolean:
+  alex_auto_trigger:
+    name: Alex auto light
+
+2) Есть датчик движения (sr-501, подключенный через esphome) binary_sensor.pir_alex
+3) Есть реле Tuya WHD02, известное в системе как switch.alex_light с подключенным к нему физическим выключателем, приоритета которого мы добиваемся
+
+Реализация:
+
+По умолчанию, включение света при движении (и выключение, при отсутствии движения) включено (input_boolean.alex_auto_trigger=on). За реализацию этого отвечает автоматизация
+
+alias: Автосвет
+description: Автосвет
+trigger:
+  - platform: state
+    entity_id:
+      - binary_sensor.pir_alex
+condition:
+  - condition: state
+    entity_id: input_boolean.alex_auto_trigger
+    state: "on"
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.pir_alex
+            state: "on"
+            for:
+              hours: 0
+              minutes: 0
+              seconds: 0
+          - condition: state
+            entity_id: switch.alex_light
+            state: "off"
+        sequence:
+          - action: switch.turn_on
+            data: {}
+            target:
+              entity_id: switch.alex_light
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.pir_alex
+            state: "off"
+            for:
+              hours: 0
+              minutes: 0
+              seconds: 0
+          - condition: state
+            entity_id: switch.alex_light
+            state: "on"
+        sequence:
+          - action: switch.turn_off
+            data: {}
+            target:
+              entity_id: switch.alex_light
+mode: single
+
+А вот что бы был приоритет физического выключателя, создаём ещё одну автоматизацию, которая определяет, каким способом был включен или выключен свет
+
+alias: alex light on
+description: alex light on
+trigger:
+  - platform: state
+    entity_id:
+      - switch.alex_light
+    from:
+      - "off"
+      - "on"
+    to:
+      - "off"
+      - "on"
+condition: []
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: |-
+              {{ trigger.to_state.context.parent_id == none
+                 and trigger.to_state.state == 'on'
+              }}
+        sequence:
+          - action: input_boolean.turn_off
+            target:
+              entity_id: input_boolean.alex_auto_trigger
+            data: {}
+      - conditions:
+          - condition: template
+            value_template: |-
+              {{ trigger.to_state.context.parent_id == none
+                 and trigger.to_state.state == 'off'
+              }}
+        sequence:
+          - action: input_boolean.turn_on
+            target:
+              entity_id: input_boolean.alex_auto_trigger
+            data: {}
+mode: single
+
+
+
+
