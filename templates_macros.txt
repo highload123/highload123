@@ -91,5 +91,14 @@ sensor:
           {%  set time = (value | int)/100 %}
           {{ normal_uptime (time) }}
 
+Причём использование временной переменной time строго обязательно, иначе сенсор будет unknown, хотя в случае сенсира аптайма системы
 
+  - sensor:
+      name: System Uptime
+      command: "awk '{print int($1)}' /proc/uptime"
+      value_template: >-
+          {% from 'func.jinja' import normal_uptime %}
+          {{ normal_uptime (value) }}
+
+нникакие временные переменные не нужны.
 
