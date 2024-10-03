@@ -1,0 +1,95 @@
+Повторное использование шаблонов для улучшения читаемости кода (yaml).
+
+Родное описание: <a href="https://www.home-assistant.io/docs/configuration/templating/">Templating</a>
+
+Как пример, это перевод uptime'а устройств в нормальночитаемый формат типа "1 час 15 минут" вместо бездушного 01:15. Или перевод объёма в байтах в мегагигобайты. Т.е. те функции преобразования, которые требуются не единожды и не с одним сенсором.
+
+Итак, все создаваемые файлы шаблонов должны иметь расширение .jinja, лежать в папке config/custom_templates и иметь размер не более 5Мб (core-2024.10.0).
+Поскольку создаваемые шаблоны загружаются при запуске haos'а, то для их перезагрузки необходимо выполнить homeassistant.reload_custom_templates
+
+Для примера, будем переводить uptime устройства esphome в удобночитаемый формат. Для этого определим в конфиге устройства необходимый сенсор:
+
+sensor:
+  - platform: uptime
+    name: "Uptime Sensor"
+
+После этого, наше устройство будет сообщать раз в 60 секунд (по умолчанию) haos'у свой uptime в секундах:
+
+[13:09:42][D][sensor:093]: 'Uptime Sensor': Sending state 5133.10498 s with 0 decimals of accuracy
+
+А в haos этот сенсор будет называться sensor.<YOUR_ESP_NAME>_uptime_sensor
+
+Для перевода в нормальночитаемый формат типа "1 час 28 минут", создадим собственный макрос в config/custom_templates/func.jinja следующего содержания:
+
+{%- macro normal_uptime(longtime) -%}
+{%  set time = ( longtime | int) | int %}
+{%- if time < 86400 -%}
+{%    set hours = (time / 3600) | int %}
+{%    set minutes = ((time - hours * 3600)/60) | int %}
+{%- else -%}
+{%    set hours = ((time % 86400) / 3600) | int %}
+{%    set minutes = ((time % 3600) / 60) | int %}
+{%- endif -%}
+{%- if time < 3600 -%}
+{%    set minutes = (time / 60) | int %}
+{%- endif -%}
+{%  set days = (time / 86400) | int %}
+{%- if time < 60 -%}
+      Меньше одной минуты
+{%- elif days == 1 or days == 21 or days == 31 -%}
+      {{ days }} день
+{%- elif (days > 1 and days < 5) or (days%10 > 1 and days%10 < 5) -%}
+      {{ days }} дня
+{%- elif days != 0 -%}
+      {{ days }} дней
+{%- endif -%}
+      {{ ' ' }}
+{%- if hours > 0 -%}
+{%-   if hours == 1 or hours == 21 -%}
+        {{ hours }} час
+{%-   elif hours > 1 and hours < 5 or hours > 21 -%}
+        {{ hours }} часа  
+{%-   else -%}
+        {{ hours }} часов
+{%-   endif -%}      
+        {{ ' ' }}
+{%- endif -%}
+{%- if minutes > 0 -%}
+{%-   if minutes == 1 or minutes%10 == 1  -%}
+        {{ minutes }} минута
+{%-   elif (minutes > 1 and minutes < 5) or (minutes%10 > 1 and minutes%10 < 5) -%}
+        {{ minutes }} минуты
+{%-   else -%}
+        {{ minutes }} минут
+{%-   endif -%}
+{%- endif -%}
+{% endmacro %}
+
+Сенсор, который будет содержать uptime в читабельном формате, в haos описываем следующим образом:
+
+sensor:
+  - platform: template
+    sensors:
+      test_uptime_readable:
+        friendly_name: "Test Uptime Readible"
+        value_template: >-
+          {% from 'func.jinja' import normal_uptime %}
+          {{ normal_uptime (states.sensor.<YOUR_ESP_NAME>_uptime_sensor.state) }}
+
+Всё, можно настаждаться.
+
+Так же данный макрос можно использоваться для поолучения uptime роутера по протоколу snmp, но учитывая, что в OpenWRT uptime вчитывается в миллисекундах, из-за чего значение, посылаемое в данный макрос надо избавить от миллисекунд. Пример определения сенсора:
+
+sensor:
+  - platform: snmp
+    name: OpenWRT Uptime
+    host: 192.168.1.1
+    baseoid: 1.3.6.1.2.1.25.1.1.0
+    scan_interval: 60 # по умолчанию - 10 секунд, что частовато.
+    value_template: >-
+          {% from 'func.jinja' import normal_uptime %}
+          {%  set time = (value | int)/100 %}
+          {{ normal_uptime (time) }}
+
+
+
