@@ -36,9 +36,9 @@ sensor:
 {%  set days = (time / 86400) | int %}
 {%- if time < 60 -%}
       Меньше одной минуты
-{%- elif days == 1 or days == 21 or days == 31 -%}
+{%- elif days == 1 or (days>11 and days%10 == 1) -%}
       {{ days }} день
-{%- elif (days > 1 and days < 5) or (days%10 > 1 and days%10 < 5) -%}
+{%- elif (days > 1 and days < 5) or (days > 20 and days%10 > 1 and days%10 < 5) -%}
       {{ days }} дня
 {%- elif days != 0 -%}
       {{ days }} дней
@@ -55,9 +55,9 @@ sensor:
         {{ ' ' }}
 {%- endif -%}
 {%- if minutes > 0 -%}
-{%-   if minutes == 1 or minutes%10 == 1  -%}
+{%-   if minutes == 1 or minutes == 21 -%}
         {{ minutes }} минута
-{%-   elif (minutes > 1 and minutes < 5) or (minutes%10 > 1 and minutes%10 < 5) -%}
+{%-   elif (minutes > 1 and minutes < 5) or (minutes > 20 and minutes%10 > 1 and minutes%10 < 5) -%}
         {{ minutes }} минуты
 {%-   else -%}
         {{ minutes }} минут
