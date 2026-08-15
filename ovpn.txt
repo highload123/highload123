@@ -7,10 +7,10 @@ root@:/home/alm # cd /usr/ports/security/openvpn
 root@:/usr/ports/security/openvpn # make install clean
 2) Генерируем ключи сервера
 root@:/usr/ports/security/openvpn # cd
-root@vm263411:~ # easy-rsa init-pki
-root@vm263411:~ # easy-rsa build-ca
-root@vm263411:~ # easy-rsa gen-dh
-root@vm263411:~ # easy-rsa gen-crl
+root@:~ # easy-rsa init-pki
+root@:~ # easy-rsa build-ca
+root@:~ # easy-rsa gen-dh
+root@:~ # easy-rsa gen-crl
 и раскладываем ключи в /usr/locL/etc/openvpn/ в соответствии с конфигом
 3) в /usr/locL/etc/openvpn/ кладём server.conf следующего содержания
 root@:/usr/local/etc/openvpn # cat server.conf
@@ -31,7 +31,7 @@ status openvpn-status.log
 verb 3
 explicit-exit-notify 1
 4) Генерируем ключи клиента
-root@vm263411:~ # easyrsa build-client-full client nopass
+root@:~ # easyrsa build-client-full client nopass
 и копируем их на клиента
 5) В /etc/rc.conf.local добавляем
 gateway_enable="YES"
@@ -41,7 +41,7 @@ openvpn_dir="/usr/local/etc/openvpn"
 6) Выполняем первое включение
 root@vm263411:~ # service openvpn start
 и, если это необходимо (ранее не включено)
-root@vm263411:~ # sysctl -w net.inet.ip.forwarding=1
+root@:~ # sysctl -w net.inet.ip.forwarding=1
 7) На стороне клиента используем следующий конфиг
 client
 redirect-gateway local def1
