@@ -65,19 +65,19 @@ verb 3
 
 <ca>
 -----BEGIN CERTIFICATE-----
-### СЮДА ПОЛНОСТЬЮ ВСТАВЬТЕ СОДЕРЖИМОЕ ФАЙЛА ca.crt ###
+### ca.crt ###
 -----END CERTIFICATE-----
 </ca>
 
 <cert>
 -----BEGIN CERTIFICATE-----
-### СЮДА ПОЛНОСТЬЮ ВСТАВЬТЕ СОДЕРЖИМОЕ ФАЙЛА ogorod.crt ###
+### ogorod.crt ###
 -----END CERTIFICATE-----
 </cert>
 
 <key>
 -----BEGIN PRIVATE KEY-----
-### СЮДА ПОЛНОСТЬЮ ВСТАВЬТЕ СОДЕРЖИМОЕ ФАЙЛА ogorod.key ###
+### ogorod.key ###
 -----END PRIVATE KEY-----
 </key>
 9) Для подключения к установленному OpenVPN предварительно устанавливаем ssh-тунель:
